@@ -27,7 +27,7 @@ class PocketBaseClient:
 
         try:
             response = httpx.post(
-                f"{self.base_url}/api/admins/auth-with-password",
+                f"{self.base_url}/api/collections/_superusers/auth-with-password",
                 json={
                     "identity": settings.pb_admin_email,
                     "password": settings.pb_admin_password,

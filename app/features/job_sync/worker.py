@@ -1,0 +1,163 @@
+"""
+Job Sync Worker
+
+Background worker for processing queued jobs.
+Handles fetch, queue, and processing with crash recovery.
+"""
+
+import asyncio
+from datetime import datetime, timedelta, timezone
+
+from app.core.logging import get_logger
+from app.core.settings import settings
+from app.features.job_sync import db_helpers, service
+
+logger = get_logger(__name__)
+
+
+class SyncWorker:
+    """Worker for ERP sync operations."""
+
+    def __init__(self):
+        self.is_running = False
+        self.fetch_task: asyncio.Task | None = None
+        self.process_task: asyncio.Task | None = None
+        self.reaper_task: asyncio.Task | None = None
+
+    def start(self, run_fetch_immediately: bool = False) -> None:
+        """
+        Start worker tasks.
+
+        Args:
+            run_fetch_immediately: Run fetch immediately on start
+        """
+        if not self.is_running:
+            self.is_running = True
+            self.fetch_task = asyncio.create_task(
+                self._fetch_loop(run_fetch_immediately)
+            )
+            self.process_task = asyncio.create_task(self._process_loop())
+            self.reaper_task = asyncio.create_task(self._reaper_loop())
+            logger.info("Sync worker started")
+
+    async def stop(self) -> None:
+        """Stop all worker tasks."""
+        self.is_running = False
+
+        for task in [self.fetch_task, self.process_task, self.reaper_task]:
+            if task:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+        logger.info("Sync worker stopped")
+
+    async def _fetch_loop(self, run_immediately: bool = False) -> None:
+        """
+        Fetch ERP data periodically.
+
+        Args:
+            run_immediately: Run immediately on start
+        """
+        if run_immediately:
+            await self._run_fetch()
+
+        while self.is_running:
+            try:
+                await asyncio.sleep(
+                    settings.erp_sync_interval_minutes * 60
+                )
+                await self._run_fetch()
+            except Exception as e:
+                logger.error(f"Fetch loop error: {str(e)}")
+                await asyncio.sleep(60)
+
+    async def _run_fetch(self) -> None:
+        """Run fetch operation."""
+        try:
+            from_date = calculate_from_date()
+            logger.info(f"Fetching ERP data from {from_date}")
+
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, service.fetch_and_store_erp_data, from_date
+            )
+
+            logger.info(
+                f"Fetch complete: {result['stored']} stored, "
+                f"{result['queued']} queued"
+            )
+
+        except Exception as e:
+            logger.error(f"Fetch error: {str(e)}")
+
+    async def _process_loop(self) -> None:
+        """Process queued jobs continuously."""
+        while self.is_running:
+            try:
+                await asyncio.sleep(5)
+                await self._run_processing()
+            except Exception as e:
+                logger.error(f"Process loop error: {str(e)}")
+                await asyncio.sleep(10)
+
+    async def _run_processing(self) -> None:
+        """Run job processing."""
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, service.process_all_queued_jobs
+            )
+
+            if result["success"] > 0 or result["failed"] > 0:
+                logger.info(
+                    f"Processing complete: {result['success']} success, "
+                    f"{result['failed']} failed"
+                )
+
+        except Exception as e:
+            logger.error(f"Processing error: {str(e)}")
+
+    async def _reaper_loop(self) -> None:
+        """Reset stuck jobs periodically."""
+        while self.is_running:
+            try:
+                await asyncio.sleep(300)
+                await self._run_reaper()
+            except Exception as e:
+                logger.error(f"Reaper loop error: {str(e)}")
+                await asyncio.sleep(60)
+
+    async def _run_reaper(self) -> None:
+        """Run reaper to reset stuck jobs."""
+        try:
+            loop = asyncio.get_event_loop()
+            count = await loop.run_in_executor(
+                None, db_helpers.reset_stuck_jobs, 10
+            )
+
+            if count > 0:
+                logger.warning(f"Reaper reset {count} stuck jobs")
+
+        except Exception as e:
+            logger.error(f"Reaper error: {str(e)}")
+
+
+def calculate_from_date() -> str:
+    """
+    Calculate from_date for sync.
+
+    Returns:
+        Date string in YYYY-MM-DD format
+    """
+    if settings.erp_sync_from_date:
+        return settings.erp_sync_from_date
+
+    days_back = settings.erp_sync_days_back
+    from_date = datetime.now(timezone.utc) - timedelta(days=days_back)
+    return from_date.strftime("%Y-%m-%d")
+
+
+worker = SyncWorker()

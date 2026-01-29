@@ -37,5 +37,5 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down ERP Sync service...")
-    shutdown()
+    await shutdown()
     logger.info("✅ ERP Sync service stopped")

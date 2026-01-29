@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.health import router as health_router
 from app.core.events import lifespan
+from app.features.job_sync.router import router as job_sync_router
 from app.core.exceptions import AppException
 from app.core.handlers import (
     app_exception_handler,
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
 
     # Register API routers
     app.include_router(health_router)
+    app.include_router(job_sync_router)
 
     return app
 

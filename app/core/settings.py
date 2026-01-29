@@ -18,6 +18,16 @@ class Settings(BaseSettings):
     # JWT Authentication
     public_key: str | None = None
 
+    # ERP API Configuration
+    erp_api_url: str = (
+        "https://aswanservice.aswan.com:8088/api/"
+        "inprocessjobsBOMmaterialsDetails"
+    )
+    erp_txn_type: str = "BOM"
+    erp_sync_interval_minutes: int = 60
+    erp_sync_days_back: int = 367
+    erp_sync_from_date: str | None = None
+
     class Config:
         env_file = ".env"
 
