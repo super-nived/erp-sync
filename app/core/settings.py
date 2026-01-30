@@ -23,10 +23,10 @@ class Settings(BaseSettings):
         "https://aswanservice.aswan.com:8088/api/"
         "inprocessjobsBOMmaterialsDetails"
     )
-    erp_txn_type: str = "BOM"
+    erp_txn_type: str | None = None  # Optional - only filter if set
     erp_sync_interval_minutes: int = 60
-    erp_sync_days_back: int = 367
-    erp_sync_from_date: str | None = None
+    erp_sync_days_back: int | None = None  # Optional - only use if set
+    erp_sync_from_date: str | None = None  # Optional - only use if set
 
     class Config:
         env_file = ".env"

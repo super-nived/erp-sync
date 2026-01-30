@@ -15,18 +15,22 @@ from app.features.job_sync.schema import ERPRecord
 logger = get_logger(__name__)
 
 
-def fetch_and_store_erp_data(from_date: str) -> dict[str, int]:
+def fetch_and_store_erp_data(from_date: str | None = None) -> dict[str, int]:
     """
     Fetch ERP data and store in SQLite.
 
     Args:
-        from_date: Start date in YYYY-MM-DD format
+        from_date: Optional start date in YYYY-MM-DD format.
+                   Only used if provided.
 
     Returns:
         Dict with counts of records stored and queued
     """
     try:
-        logger.info(f"Fetching ERP data from {from_date}")
+        if from_date:
+            logger.info(f"Fetching ERP data from {from_date}")
+        else:
+            logger.info("Fetching ERP data (no date filter)")
         erp_records = repo.fetch_erp_data(from_date)
 
         stored_count = 0
@@ -34,7 +38,7 @@ def fetch_and_store_erp_data(from_date: str) -> dict[str, int]:
 
         for record in erp_records:
             if not validate_required_fields(record):
-                logger.warning("Skipping invalid record")
+                logger.warning("⚠️  Skipping invalid record")
                 continue
 
             payload_id, is_updated = repo.store_erp_record_in_sqlite(record)
@@ -47,17 +51,17 @@ def fetch_and_store_erp_data(from_date: str) -> dict[str, int]:
                 if job_id:
                     queued_count += 1
 
-        logger.info(f"Stored {stored_count}, queued {queued_count} records")
+        logger.info(f"✅ Stored {stored_count}, queued {queued_count} records")
         return {"stored": stored_count, "queued": queued_count}
 
     except Exception as e:
-        logger.error(f"Error fetching and storing data: {str(e)}")
+        logger.error(f"❌ Error fetching and storing data: {str(e)}")
         return {"stored": 0, "queued": 0}
 
 
 def validate_required_fields(record: dict[str, Any]) -> bool:
     """
-    Validate ERP record has required fields.
+    Validate ERP record has required unique key fields.
 
     Args:
         record: ERP record dict
@@ -65,7 +69,7 @@ def validate_required_fields(record: dict[str, Any]) -> bool:
     Returns:
         True if valid, False otherwise
     """
-    required = ["BOM_WORKORDER_BASE_ID", "BOM_WORKORDER_SUB_ID"]
+    required = ["CUST_ORDER_ID", "CUST_ORDER_LINE_NO", "BOM_PART_ID"]
     return all(field in record and record[field] for field in required)
 
 
@@ -91,17 +95,18 @@ def process_queued_job(job: dict[str, Any]) -> bool:
         if success:
             db_helpers.mark_job_done(job_id)
             db_helpers.log_push_result(job_id, 200, "Success")
-            logger.info(f"Job {job_id} completed")
+            logger.info(f"✅ Job {job_id} completed")
             return True
         else:
             error_msg = "Failed to push to PocketBase"
             db_helpers.mark_job_failed(job_id, error_msg)
             db_helpers.log_push_result(job_id, 500, error_msg)
+            logger.error(f"❌ Job {job_id} failed: {error_msg}")
             return False
 
     except Exception as e:
         error_msg = f"Job processing error: {str(e)}"
-        logger.error(error_msg)
+        logger.error(f"❌ {error_msg}")
         db_helpers.mark_job_failed(job["id"], error_msg)
         db_helpers.log_push_result(job["id"], 500, error_msg)
         return False
@@ -121,7 +126,7 @@ def transform_to_pocketbase(payload: dict[str, Any]) -> dict[str, Any]:
         erp_record = ERPRecord(**payload)
         return erp_record.model_dump(mode="json", exclude_none=False)
     except Exception as e:
-        logger.error(f"Transform error: {str(e)}")
+        logger.error(f"❌ Transform error: {str(e)}")
         raise
 
 
@@ -139,17 +144,18 @@ def push_to_pocketbase(
         True if successful, False otherwise
     """
     try:
-        base_id = payload["BOM_WORKORDER_BASE_ID"]
-        sub_id = payload["BOM_WORKORDER_SUB_ID"]
+        cust_order_id = payload["CUST_ORDER_ID"]
+        line_no = str(payload["CUST_ORDER_LINE_NO"])
+        part_id = payload["BOM_PART_ID"]
 
-        existing = repo.find_existing_record(base_id, sub_id)
+        existing = repo.find_existing_record(cust_order_id, line_no, part_id)
 
         if existing:
             repo.update_record(existing["id"], pb_data)
-            logger.info(f"Updated {base_id}-{sub_id}")
+            logger.info(f"🔄 Updated {cust_order_id}-{line_no}-{part_id}")
         else:
             repo.create_record(pb_data)
-            logger.info(f"Created {base_id}-{sub_id}")
+            logger.info(f"➕ Created {cust_order_id}-{line_no}-{part_id}")
 
         return True
 

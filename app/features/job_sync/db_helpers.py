@@ -75,7 +75,7 @@ def insert_raw_erp_data(erp_id: str, payload: dict) -> tuple[int, bool] | tuple[
                     (new_payload_json, new_hash, now_utc(), record_id),
                 )
                 conn.commit()
-                logger.debug(f"Updated record {erp_id} (hash changed)")
+                logger.info(f"🔄 Updated record {erp_id} (hash changed)")
 
             conn.close()
             return record_id, is_updated
@@ -94,7 +94,7 @@ def insert_raw_erp_data(erp_id: str, payload: dict) -> tuple[int, bool] | tuple[
             return record_id, False
 
     except Exception as e:
-        logger.error(f"Error inserting raw data: {str(e)}")
+        logger.error(f"❌ Error inserting raw data: {str(e)}")
         return None, False
 
 
@@ -136,7 +136,7 @@ def create_job_for_payload(
                     (now, now, job_id),
                 )
                 conn.commit()
-                logger.info(f"Requeued job {job_id} for updated data")
+                logger.info(f"🔄 Requeued job {job_id} for updated data")
 
             conn.close()
             return job_id
@@ -156,7 +156,7 @@ def create_job_for_payload(
         return job_id
 
     except Exception as e:
-        logger.error(f"Error creating job: {str(e)}")
+        logger.error(f"❌ Error creating job: {str(e)}")
         return None
 
 
@@ -209,7 +209,7 @@ def get_next_queued_job() -> dict[str, Any] | None:
         }
 
     except Exception as e:
-        logger.error(f"Error getting queued job: {str(e)}")
+        logger.error(f"❌ Error getting queued job: {str(e)}")
         return None
 
 
@@ -231,7 +231,7 @@ def mark_job_done(job_id: int) -> None:
         conn.close()
 
     except Exception as e:
-        logger.error(f"Error marking job done: {str(e)}")
+        logger.error(f"❌ Error marking job done: {str(e)}")
 
 
 def mark_job_failed(job_id: int, error_msg: str) -> None:
@@ -280,7 +280,7 @@ def mark_job_failed(job_id: int, error_msg: str) -> None:
         conn.close()
 
     except Exception as e:
-        logger.error(f"Error marking job failed: {str(e)}")
+        logger.error(f"❌ Error marking job failed: {str(e)}")
 
 
 def log_push_result(
@@ -302,7 +302,7 @@ def log_push_result(
         conn.close()
 
     except Exception as e:
-        logger.error(f"Error logging push result: {str(e)}")
+        logger.error(f"❌ Error logging push result: {str(e)}")
 
 
 def reset_stuck_jobs(timeout_minutes: int = 10) -> int:
@@ -338,10 +338,10 @@ def reset_stuck_jobs(timeout_minutes: int = 10) -> int:
         conn.close()
 
         if count > 0:
-            logger.warning(f"Reset {count} stuck jobs")
+            logger.warning(f"⚠️  Reset {count} stuck jobs")
 
         return count
 
     except Exception as e:
-        logger.error(f"Error resetting stuck jobs: {str(e)}")
+        logger.error(f"❌ Error resetting stuck jobs: {str(e)}")
         return 0

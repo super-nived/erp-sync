@@ -71,14 +71,17 @@ class SyncWorker:
                 )
                 await self._run_fetch()
             except Exception as e:
-                logger.error(f"Fetch loop error: {str(e)}")
+                logger.error(f"❌ Fetch loop error: {str(e)}")
                 await asyncio.sleep(60)
 
     async def _run_fetch(self) -> None:
         """Run fetch operation."""
         try:
             from_date = calculate_from_date()
-            logger.info(f"Fetching ERP data from {from_date}")
+            if from_date:
+                logger.info(f"📥 Fetching ERP data from {from_date}")
+            else:
+                logger.info("📥 Fetching ERP data (no date filter)")
 
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
@@ -86,12 +89,12 @@ class SyncWorker:
             )
 
             logger.info(
-                f"Fetch complete: {result['stored']} stored, "
+                f"✅ Fetch complete: {result['stored']} stored, "
                 f"{result['queued']} queued"
             )
 
         except Exception as e:
-            logger.error(f"Fetch error: {str(e)}")
+            logger.error(f"❌ Fetch error: {str(e)}")
 
     async def _process_loop(self) -> None:
         """Process queued jobs continuously."""
@@ -100,7 +103,7 @@ class SyncWorker:
                 await asyncio.sleep(5)
                 await self._run_processing()
             except Exception as e:
-                logger.error(f"Process loop error: {str(e)}")
+                logger.error(f"❌ Process loop error: {str(e)}")
                 await asyncio.sleep(10)
 
     async def _run_processing(self) -> None:
@@ -113,12 +116,12 @@ class SyncWorker:
 
             if result["success"] > 0 or result["failed"] > 0:
                 logger.info(
-                    f"Processing complete: {result['success']} success, "
+                    f"⚙️  Processing complete: {result['success']} success, "
                     f"{result['failed']} failed"
                 )
 
         except Exception as e:
-            logger.error(f"Processing error: {str(e)}")
+            logger.error(f"❌ Processing error: {str(e)}")
 
     async def _reaper_loop(self) -> None:
         """Reset stuck jobs periodically."""
@@ -127,7 +130,7 @@ class SyncWorker:
                 await asyncio.sleep(300)
                 await self._run_reaper()
             except Exception as e:
-                logger.error(f"Reaper loop error: {str(e)}")
+                logger.error(f"❌ Reaper loop error: {str(e)}")
                 await asyncio.sleep(60)
 
     async def _run_reaper(self) -> None:
@@ -139,25 +142,32 @@ class SyncWorker:
             )
 
             if count > 0:
-                logger.warning(f"Reaper reset {count} stuck jobs")
+                logger.warning(f"⚠️  Reaper reset {count} stuck jobs")
 
         except Exception as e:
-            logger.error(f"Reaper error: {str(e)}")
+            logger.error(f"❌ Reaper error: {str(e)}")
 
 
-def calculate_from_date() -> str:
+def calculate_from_date() -> str | None:
     """
-    Calculate from_date for sync.
+    Calculate from_date for sync based on settings.
 
     Returns:
-        Date string in YYYY-MM-DD format
+        Date string in YYYY-MM-DD format, or None if no date filter configured
     """
+    # Priority 1: Use explicit from_date if set
     if settings.erp_sync_from_date:
         return settings.erp_sync_from_date
 
-    days_back = settings.erp_sync_days_back
-    from_date = datetime.now(timezone.utc) - timedelta(days=days_back)
-    return from_date.strftime("%Y-%m-%d")
+    # Priority 2: Calculate from days_back if set
+    if settings.erp_sync_days_back:
+        from_date = datetime.now(timezone.utc) - timedelta(
+            days=settings.erp_sync_days_back
+        )
+        return from_date.strftime("%Y-%m-%d")
+
+    # Priority 3: No date filter configured
+    return None
 
 
 worker = SyncWorker()

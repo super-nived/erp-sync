@@ -5,24 +5,17 @@ API endpoints for ERP sync operations.
 Following spec.md: HTTP handling only, delegates to service.
 """
 
-from datetime import datetime, timedelta, timezone
-
 from fastapi import APIRouter, HTTPException
 
 from app.core.logging import get_logger
 from app.features.job_sync.scheduler import scheduler
 from app.features.job_sync.schema import SyncTriggerRequest
+from app.features.job_sync.worker import calculate_from_date
 from app.utils.response import success
 
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/job-sync", tags=["Job Sync"])
-
-
-def get_default_from_date() -> str:
-    """Get default from_date (7 days back)."""
-    from_date = datetime.now(timezone.utc) - timedelta(days=365)
-    return from_date.strftime("%Y-%m-%d")
 
 
 @router.post("/trigger")
@@ -39,7 +32,8 @@ async def trigger_sync(request: SyncTriggerRequest):
     try:
         from app.features.job_sync import service
 
-        from_date = request.from_date or get_default_from_date()
+        # Use provided from_date, or calculate from settings
+        from_date = request.from_date or calculate_from_date()
 
         import asyncio
 
