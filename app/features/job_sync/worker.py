@@ -24,6 +24,17 @@ class SyncWorker:
         self.process_task: asyncio.Task | None = None
         self.reaper_task: asyncio.Task | None = None
 
+        # Current sync session statistics
+        self.current_sync_stats = {
+            "is_syncing": False,
+            "total_fetched": 0,
+            "unique_records": 0,
+            "queued_jobs": 0,
+            "started_at": None,
+            "api_url": None,
+            "query_params": {},
+        }
+
     def start(self, run_fetch_immediately: bool = False) -> None:
         """
         Start worker tasks.
@@ -77,7 +88,23 @@ class SyncWorker:
     async def _run_fetch(self) -> None:
         """Run fetch operation."""
         try:
+            # Mark sync as started
+            self.current_sync_stats["is_syncing"] = True
+            self.current_sync_stats["started_at"] = datetime.now(
+                timezone.utc
+            ).isoformat()
+
             from_date = calculate_from_date()
+
+            # Capture API URL and params
+            self.current_sync_stats["api_url"] = settings.erp_api_url
+            query_params = {}
+            if settings.erp_txn_type:
+                query_params["txnType"] = settings.erp_txn_type
+            if from_date:
+                query_params["fromDate"] = from_date
+            self.current_sync_stats["query_params"] = query_params
+
             if from_date:
                 logger.info(f"📥 Fetching ERP data from {from_date}")
             else:
@@ -88,12 +115,23 @@ class SyncWorker:
                 None, service.fetch_and_store_erp_data, from_date
             )
 
+            # Update sync statistics
+            self.current_sync_stats["total_fetched"] = result.get(
+                "fetched", 0
+            )
+            self.current_sync_stats["unique_records"] = result.get(
+                "stored", 0
+            )
+            self.current_sync_stats["queued_jobs"] = result.get("queued", 0)
+            self.current_sync_stats["is_syncing"] = False
+
             logger.info(
                 f"✅ Fetch complete: {result['stored']} stored, "
                 f"{result['queued']} queued"
             )
 
         except Exception as e:
+            self.current_sync_stats["is_syncing"] = False
             logger.error(f"❌ Fetch error: {str(e)}")
 
     async def _process_loop(self) -> None:

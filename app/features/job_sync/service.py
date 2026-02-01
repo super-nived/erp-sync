@@ -52,11 +52,15 @@ def fetch_and_store_erp_data(from_date: str | None = None) -> dict[str, int]:
                     queued_count += 1
 
         logger.info(f"✅ Stored {stored_count}, queued {queued_count} records")
-        return {"stored": stored_count, "queued": queued_count}
+        return {
+            "fetched": len(erp_records),
+            "stored": stored_count,
+            "queued": queued_count,
+        }
 
     except Exception as e:
         logger.error(f"❌ Error fetching and storing data: {str(e)}")
-        return {"stored": 0, "queued": 0}
+        return {"fetched": 0, "stored": 0, "queued": 0}
 
 
 def validate_required_fields(record: dict[str, Any]) -> bool:

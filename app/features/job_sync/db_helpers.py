@@ -51,7 +51,7 @@ def insert_raw_erp_data(erp_id: str, payload: dict) -> tuple[int, bool] | tuple[
         cursor = conn.cursor()
 
         new_hash = calculate_payload_hash(payload)
-        new_payload_json = json.dumps(payload)
+        new_payload_json = json.dumps(payload, sort_keys=True)
 
         cursor.execute(
             "SELECT id, payload_hash FROM erp_raw_data WHERE erp_id = ?",
@@ -345,3 +345,52 @@ def reset_stuck_jobs(timeout_minutes: int = 10) -> int:
     except Exception as e:
         logger.error(f"❌ Error resetting stuck jobs: {str(e)}")
         return 0
+
+
+def get_sync_statistics() -> dict[str, Any]:
+    """
+    Get comprehensive sync statistics.
+
+    Returns:
+        Dictionary with sync statistics
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # Total unique records in database
+        cursor.execute("SELECT COUNT(*) FROM erp_raw_data")
+        total_records = cursor.fetchone()[0]
+
+        # Job queue statistics
+        cursor.execute(
+            """
+            SELECT status, COUNT(*) as count
+            FROM job_queue
+            GROUP BY status
+            """
+        )
+        job_status = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # Last fetch timestamp
+        cursor.execute(
+            """
+            SELECT MAX(fetched_at) FROM erp_raw_data
+            """
+        )
+        last_fetch = cursor.fetchone()[0]
+
+        conn.close()
+
+        return {
+            "total_unique_records": total_records,
+            "jobs_queued": job_status.get("queued", 0),
+            "jobs_processing": job_status.get("processing", 0),
+            "jobs_done": job_status.get("done", 0),
+            "jobs_failed": job_status.get("failed", 0),
+            "last_fetch_at": last_fetch,
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error getting sync statistics: {str(e)}")
+        return {}

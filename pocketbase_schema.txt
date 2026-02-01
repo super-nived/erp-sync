@@ -1,0 +1,192 @@
+# PocketBase Collection Schema for: ASWNDUBAI_erpConsolidateData
+
+## How to Create the Collection in PocketBase:
+
+1. Go to PocketBase Admin UI: http://127.0.0.1:8090/_/
+2. Click "Collections" → "New Collection" → "Base Collection"
+3. Name: ASWNDUBAI_erpConsolidateData
+4. Add these fields one by one:
+
+---
+
+## FIELD DEFINITIONS (Copy these to PocketBase):
+
+### Unique Identifier Fields (REQUIRED)
+TXN_TYPE                        → Type: Text       | Required: No  | Max: 50
+CUST_ORDER_ID                   → Type: Text       | Required: Yes | Max: 100  | Unique Index: Yes
+CUST_ORDER_LINE_NO              → Type: Number     | Required: Yes | Min: 0
+BOM_PART_ID                     → Type: Text       | Required: Yes | Max: 200
+
+### Date Fields (All Optional, Allow NULL)
+CUST_ORDER_DATE                 → Type: Date       | Required: No
+CUST_ORDER_WANT_DATE            → Type: Date       | Required: No
+CUST_ORDER_LINE_WANT_DATE       → Type: Date       | Required: No
+WO_CREATE_DATE                  → Type: Date       | Required: No
+WO_RLS_DATE                     → Type: Date       | Required: No
+WO_WANT_DATE                    → Type: Date       | Required: No
+WO_CLOSE_DATE                   → Type: Date       | Required: No
+PURC_REQ_DATE                   → Type: Date       | Required: No
+PURC_REQ_WANT_DATE              → Type: Date       | Required: No
+PURC_ORDER_DATE                 → Type: Date       | Required: No
+PO_WANT_DATE                    → Type: Date       | Required: No
+PO_ETD                          → Type: Date       | Required: No
+PO_ETA                          → Type: Date       | Required: No
+GRN_DATE                        → Type: Date       | Required: No
+GRN_CREATE_DATE                 → Type: Date       | Required: No
+GRN_INSPECTION_DATE             → Type: Date       | Required: No
+INV_TRANS_DATE                  → Type: Date       | Required: No
+INV_TRANS_CREATE_DATE           → Type: Date       | Required: No
+
+### Status/Code Fields (Text)
+CUST_ORDER_STATUS               → Type: Text       | Required: No  | Max: 10
+WO_STATUS                       → Type: Text       | Required: No  | Max: 10
+WO_PRODUCT_CODE                 → Type: Text       | Required: No  | Max: 50
+WO_ASW_STATUS                   → Type: Text       | Required: No  | Max: 50
+BOM_WORKORDER_TYPE              → Type: Text       | Required: No  | Max: 10
+PART_IS_MANUFACTURE             → Type: Text       | Required: No  | Max: 1
+PART_CATEGORY                   → Type: Text       | Required: No  | Max: 50
+PURC_ORDER_STATUS               → Type: Text       | Required: No  | Max: 10
+INV_TRANS_TYPE                  → Type: Text       | Required: No  | Max: 50
+INV_TRANS_CLASS                 → Type: Text       | Required: No  | Max: 50
+
+### ID/Reference Fields (Text, Allow Empty)
+WO_ASSMB_PART_ID                → Type: Text       | Required: No  | Max: 200
+BOM_WORKORDER_BASE_ID           → Type: Text       | Required: No  | Max: 100
+BOM_WORKORDER_LOT_ID            → Type: Text       | Required: No  | Max: 50
+BOM_WORKORDER_SPLIT_ID          → Type: Text       | Required: No  | Max: 50
+BOM_WORKORDER_SUB_ID            → Type: Text       | Required: No  | Max: 50
+PURC_REQ_ID                     → Type: Text       | Required: No  | Max: 100
+PURC_REQ_PART_ID                → Type: Text       | Required: No  | Max: 200
+PURC_ORDER_ID                   → Type: Text       | Required: No  | Max: 100
+GRN_ID                          → Type: Text       | Required: No  | Max: 100
+INV_TRANS_PART_ID               → Type: Text       | Required: No  | Max: 200
+
+### Numeric Fields (Number - Decimal)
+WO_ASSMB_QTY                    → Type: Number     | Required: No  | Min: 0
+BOM_QTY                         → Type: Number     | Required: No  | Min: 0
+PART_QTY_ON_HAND_WHOLE          → Type: Number     | Required: No
+PART_QTY_ON_ORDER_WHOLE         → Type: Number     | Required: No
+PART_QTY_IN_DEMAND_WHOLE        → Type: Number     | Required: No
+PART_LEADTIME_DAYS              → Type: Number     | Required: No  | Min: 0
+PURC_REQ_QTY                    → Type: Number     | Required: No  | Min: 0
+PO_QTY                          → Type: Number     | Required: No  | Min: 0
+GRN_QTY                         → Type: Number     | Required: No  | Min: 0
+GRN_INSPECT_QTY                 → Type: Number     | Required: No  | Min: 0
+GRN_REJECTED_QTY                → Type: Number     | Required: No  | Min: 0
+INV_TRANS_QTY                   → Type: Number     | Required: No
+
+### Integer Fields (Number - Integer)
+BOM_OPERATION_SEQ_NO            → Type: Number     | Required: No  | Min: 0
+BOM_PIECE_NO                    → Type: Number     | Required: No  | Min: 0
+PURC_REQ_LINE_NO                → Type: Number     | Required: No  | Min: 0
+PO_LINE_NO                      → Type: Number     | Required: No  | Min: 0
+GRN_LINE_NO                     → Type: Number     | Required: No  | Min: 0
+INV_TRANS_ID                    → Type: Number     | Required: No  | Min: 0
+
+---
+
+## IMPORTANT NOTES:
+
+### 1. Unique Constraint
+Create a UNIQUE INDEX on these 3 fields combined:
+- CUST_ORDER_ID
+- CUST_ORDER_LINE_NO
+- BOM_PART_ID
+
+In PocketBase, you can do this by:
+- Click "API Rules" tab
+- Add custom validation rule or use indexes
+
+### 2. Date Format
+PocketBase expects dates in ISO 8601 format:
+- "2025-11-01T00:00:00" ✅ (with T)
+- "2025-11-01 00:00:00" ❌ (space instead of T)
+
+Your ERP data already uses correct format!
+
+### 3. NULL vs Empty String
+- For Text fields: Both "" and null are OK
+- For Number fields: Use null (not 0) when no value
+- For Date fields: Use null when no date
+
+### 4. Field Types Summary
+- Text: All strings, IDs, codes, statuses
+- Number: All quantities, counts, days (supports decimals like 4.0000)
+- Date: All datetime fields (ISO 8601 format)
+
+### 5. Why Some Fields Can Be Empty
+Your ERP data has conditional values:
+- If TXN_TYPE="PR", some PO fields might be empty
+- If GRN doesn't exist yet, GRN fields are null/empty
+- This is normal - make all non-key fields optional
+
+---
+
+## QUICK SETUP GUIDE:
+
+### Option 1: Manual Creation (Recommended for first time)
+1. Log into PocketBase Admin: http://127.0.0.1:8090/_/
+2. Create new Base Collection
+3. Name: ASWNDUBAI_erpConsolidateData
+4. Add each field above with correct type
+
+### Option 2: Import via JSON Schema
+PocketBase supports importing collection schema as JSON.
+I can provide the JSON schema if you need it.
+
+### Option 3: Auto-Create via API
+The collection will be created automatically if you enable
+"Auto-create collections" in PocketBase settings.
+(Not recommended for production)
+
+---
+
+## TESTING THE SCHEMA:
+
+After creating the collection, test with this curl:
+
+```bash
+curl -X POST "http://127.0.0.1:8090/api/collections/ASWNDUBAI_erpConsolidateData/records" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "TXN_TYPE": "PR",
+    "CUST_ORDER_ID": "SO-122869",
+    "CUST_ORDER_LINE_NO": 1,
+    "BOM_PART_ID": "PIPE12SCH40",
+    "CUST_ORDER_DATE": "2025-11-01T00:00:00",
+    "BOM_QTY": 0.0000
+  }'
+```
+
+If this works, your schema is correct!
+
+---
+
+## COMMON ERRORS & FIXES:
+
+### Error: "Failed to create record"
+→ Check: CUST_ORDER_ID, CUST_ORDER_LINE_NO, BOM_PART_ID are required
+
+### Error: "Invalid date format"
+→ Check: Dates must be "YYYY-MM-DDTHH:MM:SS" (with T, not space)
+
+### Error: "Invalid number"
+→ Check: Number fields should be numeric, not strings
+
+### Error: "Unique constraint violation"
+→ Check: Record with same CUST_ORDER_ID+CUST_ORDER_LINE_NO+BOM_PART_ID exists
+
+---
+
+## NEXT STEPS:
+
+1. Create the collection in PocketBase with these fields
+2. Test with a sample record
+3. Restart your sync application
+4. Jobs should now process successfully!
+
+The current failure (only 82 of 6461 records) is because:
+- Collection doesn't exist, OR
+- Collection has different field names/types
+
+After creating the collection with this schema, all 6461 records should sync!
